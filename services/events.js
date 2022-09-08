@@ -1,6 +1,5 @@
 import Web3 from 'web3'
 
-import { graph } from '@/services'
 import { download } from '@/store/snark'
 import networkConfig from '@/networkConfig'
 import InstanceABI from '@/abis/Instance.abi.json'
@@ -49,7 +48,6 @@ class EventService {
     const newEvents = await this.getEventsFromBlock({
       type,
       fromBlock,
-      graphMethod: `getAll${capitalizeFirstLetter(type)}s`
     })
 
     const allEvents = [].concat(savedEvents?.events || [], newEvents?.events || []).sort((a, b) => {
@@ -206,23 +204,6 @@ class EventService {
     return events
   }
 
-  async getEventsFromGraph({ fromBlock, methodName }) {
-    try {
-      const { events, lastSyncBlock } = await graph[methodName]({
-        fromBlock,
-        netId: this.netId,
-        amount: this.amount,
-        currency: this.currency
-      })
-      return {
-        events,
-        lastBlock: lastSyncBlock
-      }
-    } catch (err) {
-      return undefined
-    }
-  }
-
   async getBlocksDiff({ fromBlock }) {
     const currentBlockNumber = await this.factoryMethods.getBlockNumber()
 
@@ -323,14 +304,10 @@ class EventService {
     }
   }
 
-  async getEventsFromBlock({ fromBlock, graphMethod, type }) {
+  async getEventsFromBlock({ fromBlock, type }) {
     try {
-      // ToDo think about undefined
-      const graphEvents = await this.getEventsFromGraph({ fromBlock, methodName: graphMethod })
-      const lastSyncBlock = fromBlock > graphEvents?.lastBlock ? fromBlock : graphEvents?.lastBlock
-      const rpcEvents = await this.getEventsFromRpc({ fromBlock: lastSyncBlock, type })
+      const allEvents = await this.getEventsFromRpc({ fromBlock, type })
 
-      const allEvents = [].concat(graphEvents?.events || [], rpcEvents || [])
       if (allEvents.length) {
         return {
           events: allEvents,
